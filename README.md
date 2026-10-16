@@ -1,7 +1,8 @@
 # [Desafio Jungle Gaming - NFT Marketplace - Jonny Gabriel Teles](https://github.com/junglegaming/frontend-challenge)
 
-## Link do repositório
-[GitHub - NFT Marketplace](https://github.com/JonnyTeles/nft-marketplace)
+## [Link do repositório GitHub - NFT Marketplace](https://github.com/JonnyTeles/nft-marketplace)
+
+## [Link na Vercel](https://nft-marketplace-43j2evj2j-jonnyteles.vercel.app/)
 
 Marketplace de NFTs desenvolvido em React e TypeScript como parte de um desafio de Frontend. O projeto reúne catálogo, busca, filtros, favoritos, carrinho, checkout, autenticação e gerenciamento da conta, com foco em responsividade, organização do código e integração entre as diferentes partes da aplicação.
 
