@@ -14,7 +14,8 @@ export function Layout() {
     await api.post("/auth/logout");
     queryClient.clear();
     setMenuOpen(false);
-    navigate({ to: "/" });
+    await navigate({ to: "/" });
+    window.location.reload();
   }
   return (
     <div className="app-shell">
