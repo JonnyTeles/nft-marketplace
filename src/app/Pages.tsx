@@ -1386,7 +1386,10 @@ export function RegisterPage() {
           <ArrowRight size={17} />
         </button>
         <p className="auth-switch">
-          Já tem uma conta? <Link search={{ redirect: "" }} to="/login">Entrar</Link>
+          Já tem uma conta?{" "}
+          <Link search={{ redirect: "" }} to="/login">
+            Entrar
+          </Link>
         </p>
       </form>
     </AuthShell>

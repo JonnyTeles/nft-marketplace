@@ -1,49 +1,49 @@
-# Architecture decisions
+# Decisões de arquitetura
 
-## Layers
+## Camadas
 
-- `src/app/Pages.tsx`: route-level UI and user flows.
-- `src/components`: reusable layout, NFT card and shadcn-style UI primitives.
-- `src/lib/api.ts`: Axios client, authorization header and common transport errors.
-- `src/lib/hooks.ts`: TanStack Query queries/mutations and cache invalidation.
-- `src/lib/money.ts`: exact fixed-point ETH calculations using 8 decimal places and `BigInt`.
-- `src/mocks/handlers.ts`: REST mock contracts and scenario responses. Components and query hooks do not contain mock response data.
-- `src/mocks/socket.ts`: Socket.IO protocol mock using `@mswjs/socket.io-binding` and MSW WebSocket interception.
-- `src/mocks/data.ts`: shared fixtures plus browser storage persistence.
-- `src/lib/realtime.ts`: Socket.IO client lifecycle, session isolation and query reconciliation.
+- `src/app/Pages.tsx`: interface do usuário no nível das rotas e fluxos de interação.
+- `src/components`: layout reutilizável, cartões de NFT e componentes primitivos de interface no estilo shadcn.
+- `src/lib/api.ts`: cliente Axios, cabeçalho de autorização e tratamento comum de erros de comunicação.
+- `src/lib/hooks.ts`: consultas/mutações do TanStack Query e invalidação de cache.
+- `src/lib/money.ts`: cálculos exatos de ETH com ponto fixo, usando 8 casas decimais e `BigInt`.
+- `src/mocks/handlers.ts`: contratos simulados REST e respostas dos cenários. Os componentes e hooks de consulta não contêm dados de respostas simuladas.
+- `src/mocks/socket.ts`: simulação do protocolo Socket.IO usando `@mswjs/socket.io-binding` e interceptação de WebSocket pelo MSW.
+- `src/mocks/data.ts`: dados de teste compartilhados e persistência no armazenamento do navegador.
+- `src/lib/realtime.ts`: ciclo de vida do cliente Socket.IO, isolamento de sessões e sincronização de consultas.
 
-## Query/cache policy
+## Política de consultas/cache
 
-- Catalog query keys include search, category, sort and page, so distinct URL states do not share results.
-- NFT detail is keyed by stable NFT ID; cart, session, favorites, wallets and orders have separate query keys.
-- Queries use a 15-second stale time, five-minute garbage collection, one retry and focus revalidation. Mutations are not retried automatically because a retry can duplicate writes.
-- Favorites use an optimistic cache update and roll back to the previous value on failure.
-- Successful cart/profile/wallet/order mutations invalidate the affected query keys. Socket events invalidate active catalog/detail/cart/quote/order queries, followed by REST reconciliation on connection.
-- A session change clears the QueryClient cache and reconnects the socket with the new user ID. Socket listeners are removed before disconnecting.
+- As chaves de consulta do catálogo incluem busca, categoria, ordenação e página, de modo que diferentes estados da URL não compartilhem os mesmos resultados.
+- Os detalhes do NFT são identificados por um ID estável do NFT; carrinho, sessão, favoritos, carteiras e pedidos possuem chaves de consulta separadas.
+- As consultas utilizam um tempo de validade de 15 segundos, coleta de lixo após cinco minutos, uma tentativa de repetição e revalidação ao recuperar o foco. As mutações não são repetidas automaticamente, pois uma nova tentativa pode duplicar operações de escrita.
+- Os favoritos utilizam uma atualização otimista do cache e retornam ao valor anterior em caso de falha.
+- Mutações bem-sucedidas de carrinho/perfil/carteira/pedido invalidam as chaves de consulta afetadas. Eventos do Socket invalidam as consultas ativas de catálogo/detalhes/carrinho/orçamento/pedido, seguidas pela sincronização REST ao estabelecer a conexão.
+- Uma alteração de sessão limpa o cache do QueryClient e reconecta o Socket com o novo ID de usuário. Os listeners do Socket são removidos antes da desconexão.
 
-## Session and data isolation
+## Sessão e isolamento de dados
 
-The mock API identifies the active fictional user from `sessionStorage`. Private data keys include the user ID: favorites, wallets, orders and authenticated carts. Guest cart contents are merged into the authenticated cart at login/registration and are then cleared from the guest key. Logout clears the session and the client query cache. This is test infrastructure only, not a secure authentication mechanism.
+A API simulada identifica o usuário fictício ativo por meio do `sessionStorage`. As chaves de dados privados incluem o ID do usuário: favoritos, carteiras, pedidos e carrinhos de usuários autenticados. O conteúdo do carrinho de visitantes é mesclado ao carrinho autenticado durante o login/cadastro e, em seguida, removido da chave do visitante. O logout limpa a sessão e o cache de consultas do cliente. Essa infraestrutura serve apenas para testes, não sendo um mecanismo seguro de autenticação.
 
-## Cart and checkout
+## Carrinho e checkout
 
-- Cart quantities are integers and checked against the current fixture availability.
-- ETH is represented as decimal strings at REST boundaries; all subtotals, discounts, fees and totals are calculated with fixed-point `BigInt` helpers, not floating-point addition.
-- The checkout requests a quote, then sends its expected total when creating an order. A changed total or unavailable item returns a conflict, requiring a fresh quote and another explicit confirmation.
-- `Idempotency-Key` is stored for the in-flight attempt in session storage. The mock keeps an idempotency record containing a request fingerprint and the immutable order snapshot. A matching retry recovers the same order; a different fingerprint with the same key conflicts.
-- Confirmed orders remove only purchased quantities. Rejected or pending orders retain the cart. Receipt item and price fields are copied at creation time.
+- As quantidades do carrinho são números inteiros e são verificadas em relação à disponibilidade atual dos dados de teste.
+- O ETH é representado como strings decimais nos limites da API REST; todos os subtotais, descontos, taxas e totais são calculados com funções auxiliares de ponto fixo usando `BigInt`, e não com operações de soma de ponto flutuante.
+- O checkout solicita um orçamento e, em seguida, envia o total esperado ao criar um pedido. Uma alteração no total ou um item indisponível retorna um conflito, exigindo um novo orçamento e outra confirmação explícita.
+- `Idempotency-Key` é armazenada no `sessionStorage` durante a tentativa em andamento. A simulação mantém um registro de idempotência contendo uma impressão digital da solicitação e o snapshot imutável do pedido. Uma nova tentativa correspondente recupera o mesmo pedido; uma impressão digital diferente com a mesma chave gera um conflito.
+- Pedidos confirmados removem apenas as quantidades compradas. Pedidos recusados ou pendentes mantêm o carrinho. Os dados dos itens e preços do recibo são copiados no momento da criação.
 
-## Real-time event contract
+## Contrato de eventos em tempo real
 
-`nft.updated` contains the stable NFT ID, version and updated resource; the client ignores versions older than the cached version and invalidates the catalog/detail/cart/quote queries. `order.updated` contains the stable order ID and version; the client invalidates the order query. Duplicate and old events do not roll the query cache back. On reconnect, active resources are reconciled from REST. The MSW Socket.IO binding handles only the two challenge-specific events and is documented as a constrained mock transport.
+`nft.updated` contém o ID estável do NFT, a versão e o recurso atualizado; o cliente ignora versões anteriores à armazenada em cache e invalida as consultas de catálogo/detalhes/carrinho/orçamento. `order.updated` contém o ID estável do pedido e a versão; o cliente invalida a consulta do pedido. Eventos duplicados ou antigos não fazem o cache de consultas retroceder. Ao reconectar, os recursos ativos são sincronizados com a API REST. A integração Socket.IO do MSW trata apenas os dois eventos específicos do desafio e é documentada como um transporte simulado com funcionalidades limitadas.
 
-## Responsive UI and accessibility
+## Interface responsiva e acessibilidade
 
-The layout uses responsive CSS breakpoints and is intended to be checked at 390, 768 and 1440 pixels. Forms have labels and browser validation, async errors use `role="alert"`, operation messages use status regions, controls have accessible names, focus-visible outlines are preserved and reduced-motion preferences disable shimmer/transition motion. Skeleton blocks preserve the rough dimensions of loaded content.
+O layout utiliza pontos de interrupção responsivos em CSS e deve ser verificado nas larguras de 390, 768 e 1440 pixels. Os formulários possuem rótulos e validação do navegador, erros assíncronos utilizam `role="alert"`, mensagens de operação utilizam regiões de status, os controles possuem nomes acessíveis, os contornos de foco visível são preservados e as preferências de movimento reduzido desativam animações de brilho e transições. Os blocos de skeleton preservam as dimensões aproximadas do conteúdo carregado.
 
-## Deviations / follow-up work
+## Desvios / trabalhos futuros
 
-- The Figma file should be used for a final visual pass: the current design establishes a coherent dark marketplace visual system and local generated artwork, but exact pixel parity has not been verified against the Figma frames in this environment.
-- Password change is implemented through `PATCH /api/profile/password`, with current-password validation and minimum-length checks. Add a dedicated Playwright test for this flow.
-- Playwright coverage is an executable starter suite for catalog/history, detail/cart, login/checkout success, invalid login and missing NFT. Expand it to cover all 12 required scenarios before presenting the challenge as fully verified.
-- The Lighthouse configuration is provided, but scores/reports must be generated in a local or CI environment after dependency installation.
+- O arquivo do Figma deve ser utilizado para uma revisão visual final: o design atual estabelece um sistema visual coerente para um marketplace com tema escuro e artes geradas localmente, mas a correspondência exata em nível de pixel ainda não foi verificada em relação aos frames do Figma neste ambiente.
+- A alteração de senha é implementada por meio de `PATCH /api/profile/password`, com validação da senha atual e verificações de comprimento mínimo. Adicione um teste específico do Playwright para esse fluxo.
+- A cobertura do Playwright é uma suíte inicial executável para catálogo/histórico, detalhes/carrinho, sucesso no login/checkout, login inválido e NFT inexistente. Amplie-a para cobrir todos os 12 cenários exigidos antes de apresentar o desafio como totalmente validado.
+- A configuração do Lighthouse está disponível, mas as pontuações e os relatórios precisam ser gerados em um ambiente local ou de CI após a instalação das dependências.

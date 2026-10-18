@@ -66,10 +66,10 @@ npm run prepare:mocks
 
 O projeto disponibiliza duas contas fictícias para testar os fluxos de autenticação.
 
-| E-mail | Senha |
-| --- | --- |
+| E-mail           | Senha      |
+| ---------------- | ---------- |
 | `jonny@demo.com` | `Demo123!` |
-| `john@demo.com` | `Demo123!` |
+| `john@demo.com`  | `Demo123!` |
 
 Também é possível criar uma conta pela própria aplicação.
 
@@ -119,18 +119,18 @@ As funcionalidades privadas exigem autenticação simulada. A sessão pode ser r
 
 ## Rotas da aplicação
 
-| Rota | Descrição |
-| --- | --- |
-| `/` | Página inicial, catálogo, busca, filtros e ordenação. |
-| `/nft/:nftId` | Detalhes de um NFT, favoritos e adição ao carrinho. |
-| `/cart` | Carrinho, quantidades, cupons e resumo dos valores. |
-| `/checkout` | Dados do colecionador, carteira, revisão e pagamento. |
-| `/confirmation/:orderId` | Situação do pedido e recibo. |
-| `/login` | Login e validação das credenciais. |
-| `/register` | Cadastro e validação dos dados. |
-| `/profile` | Perfil, avatar e configurações da conta. |
-| `/wallets` | Cadastro, edição e seleção da carteira principal. |
-| `/favorites` | Lista de NFTs favoritados. |
+| Rota                     | Descrição                                             |
+| ------------------------ | ----------------------------------------------------- |
+| `/`                      | Página inicial, catálogo, busca, filtros e ordenação. |
+| `/nft/:nftId`            | Detalhes de um NFT, favoritos e adição ao carrinho.   |
+| `/cart`                  | Carrinho, quantidades, cupons e resumo dos valores.   |
+| `/checkout`              | Dados do colecionador, carteira, revisão e pagamento. |
+| `/confirmation/:orderId` | Situação do pedido e recibo.                          |
+| `/login`                 | Login e validação das credenciais.                    |
+| `/register`              | Cadastro e validação dos dados.                       |
+| `/profile`               | Perfil, avatar e configurações da conta.              |
+| `/wallets`               | Cadastro, edição e seleção da carteira principal.     |
+| `/favorites`             | Lista de NFTs favoritados.                            |
 
 ## Como funcionam os mocks
 
@@ -165,47 +165,6 @@ No checkout, escolha uma das opções de simulação:
 
 Esses cenários permitem verificar como a interface reage a diferentes resultados. Um pedido recusado não deve ser tratado como compra concluída, e os itens correspondentes permanecem no carrinho.
 
-### Alterações em tempo real
-
-Na página de detalhes de um NFT, utilize a ação **Simular alteração de preço / estoque**.
-
-A ação envia um evento pelo cliente Socket.IO. O handler da simulação altera os dados compartilhados e emite o evento `nft.updated`, permitindo atualizar as informações relevantes do catálogo, dos detalhes e do carrinho.
-
-O evento `order.updated` é utilizado para refletir as mudanças de estado dos pedidos. Após uma reconexão, os dados podem ser reconciliados com as respostas REST.
-
-### Simulação de erros de rede
-
-O endpoint de listagem aceita parâmetros que ajudam a reproduzir diferentes condições:
-
-| Parâmetro | Resultado esperado |
-| --- | --- |
-| `?slow=1` | Resposta mais lenta. |
-| `?timeout=1` | Demora superior ao timeout configurado no Axios. |
-| `?fail=500` | Resposta de erro interno do servidor. |
-| `?empty=1` | Listagem sem resultados. |
-
-Esses parâmetros devem ser utilizados na rota de listagem de NFTs.
-
-### Expiração da sessão e reset
-
-Os endpoints de desenvolvimento permitem testar situações específicas:
-
-- `POST /api/dev/session-expire`: expira a sessão simulada.
-- `POST /api/dev/reset`: restaura os dados da demonstração e limpa o estado de sessão previsto pela simulação.
-- `POST /api/dev/nft-update`: altera os dados de um NFT para testes manuais.
-
-Exemplo de corpo para atualizar um NFT:
-
-```json
-{
-  "id": "nft-aurora",
-  "price": "0.91",
-  "available": 5
-}
-```
-
-Esses endpoints são exclusivos do ambiente de demonstração e não devem ser disponibilizados sem proteção em uma API de produção.
-
 ## API e regras de negócio
 
 Os contratos REST utilizados pela aplicação abrangem os seguintes recursos:
@@ -219,47 +178,20 @@ Os contratos REST utilizados pela aplicação abrangem os seguintes recursos:
 - Perfil: consulta, atualização de dados, avatar e senha.
 - Carteiras: consulta, cadastro, edição e seleção da principal.
 
-Os erros seguem o formato geral abaixo:
-
-```json
-{
-  "code": "VALIDATION_ERROR",
-  "message": "Verifique os dados informados.",
-  "fields": {}
-}
-```
-
-O campo `fields` pode conter erros associados a campos específicos do formulário.
-
-### Precisão dos valores
-
-Os preços em ETH trafegam pela API como strings decimais. Os cálculos monetários utilizam aritmética de ponto fixo com `BigInt`, evitando os problemas de precisão que podem ocorrer com operações financeiras feitas diretamente com números de ponto flutuante.
-
-As quantidades são inteiras, e a cotação mais recente da simulação é utilizada para validar o pedido.
-
-### Idempotência dos pedidos
-
-A criação de pedidos exige o cabeçalho `Idempotency-Key`.
-
-Quando uma mesma tentativa é enviada novamente com a mesma chave e o mesmo conteúdo, a simulação recupera o pedido correspondente. Se a chave for reutilizada com um conteúdo diferente, a API retorna `409 IDEMPOTENCY_CONFLICT`.
-
-Se os valores ou a disponibilidade mudarem desde a última cotação, a API retorna `409 QUOTE_CHANGED`. Nesse caso, o usuário precisa revisar a nova cotação antes de confirmar novamente.
-
-Após uma compra confirmada, somente as quantidades efetivamente compradas são removidas do carrinho. Pedidos recusados ou pendentes preservam os itens.
-
 ## Comandos disponíveis
 
-| Comando | Finalidade |
-| --- | --- |
-| `npm run dev` | Inicia o servidor de desenvolvimento com mocks. |
-| `npm run build` | Executa a verificação de tipos e gera o build de produção. |
-| `npm run preview` | Executa uma prévia do build gerado. |
-| `npm run typecheck` | Verifica os tipos TypeScript. |
-| `npm run lint` | Executa o ESLint. |
-| `npm run test:e2e` | Executa os testes E2E do Playwright para desktop e mobile. |
-| `npm run test:e2e:ui` | Abre a interface de execução dos testes do Playwright. |
-| `npm run audit` | Executa a auditoria configurada com Lighthouse CI. |
-| `npm run prepare:mocks` | Gera novamente o Service Worker do MSW. |
+| Comando                 | Finalidade                                                 |
+| ----------------------- | ---------------------------------------------------------- |
+| `npm run dev`           | Inicia o servidor de desenvolvimento com mocks.            |
+| `npm run build`         | Executa a verificação de tipos e gera o build de produção. |
+| `npm run preview`       | Executa uma prévia do build gerado.                        |
+| `npm run typecheck`     | Verifica os tipos TypeScript.                              |
+| `npm run lint`          | Executa o ESLint.                                          |
+| `npm run test:e2e`      | Executa os testes E2E do Playwright para desktop e mobile. |
+| `npm run test:e2e:ui`   | Abre a interface de execução dos testes do Playwright.     |
+| `npm run audit`         | Executa a auditoria configurada com Lighthouse CI.         |
+| `npm run prepare:mocks` | Gera novamente o Service Worker do MSW.                    |
+| `npm run format` | Formata automaticamente os arquivos do projeto conforme as regras do Prettier. |
 
 Alguns comandos podem exigir instalações adicionais, como os navegadores do Playwright e as ferramentas configuradas para a auditoria Lighthouse.
 

@@ -67,7 +67,11 @@ export function Layout() {
                 <img src={user.avatar} alt="" />
               </button>
             ) : (
-              <Link to="/login" search={{ redirect: "" }} className="button button-small">
+              <Link
+                to="/login"
+                search={{ redirect: "" }}
+                className="button button-small"
+              >
                 Entrar
               </Link>
             )}
